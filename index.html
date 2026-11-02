@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ChantierData – Collecte et analyse BTP</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--tx:#1d1d1b;--mu:#6b6b66;--ac:#d9730d;--bd:#e0ddd5;--ok:#2e7d32;--wa:#c77700;--ko:#c62828;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171716;--card:#222220;--tx:#f0eee8;--mu:#a09e96;--bd:#35342f;--ac:#f08a24}}
+:root[data-theme="dark"]{--bg:#171716;--card:#222220;--tx:#f0eee8;--mu:#a09e96;--bd:#35342f;--ac:#f08a24}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:var(--ac);color:#fff;padding:14px 16px}
+header h1{margin:0;font-size:18px}header p{margin:2px 0 0;font-size:12px;opacity:.9}
+nav{display:flex;gap:6px;padding:10px 12px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+nav button{flex:1;padding:9px 4px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;font-size:13px}
+nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+main{padding:0 12px 24px;max-width:720px;margin:auto}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--mu);margin:8px 0 3px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{width:100%;margin-top:12px;padding:12px;border:0;border-radius:8px;background:var(--ac);color:#fff;font-weight:600;font-size:15px}
+.btn.s{background:var(--card);color:var(--tx);border:1px solid var(--bd);margin-top:8px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px}
+.kpi b{display:block;font-size:20px}.kpi span{font-size:12px;color:var(--mu)}
+.bar{margin:8px 0}.bar div:first-child{display:flex;justify-content:space-between;font-size:13px}
+.bar i{display:block;height:10px;background:var(--ac);border-radius:5px;margin-top:3px}
+.rec{border-bottom:1px solid var(--bd);padding:10px 0}.rec:last-child{border:0}
+.rec h4{margin:0;font-size:14px}.rec small{color:var(--mu)}
+.tag{font-size:11px;padding:2px 7px;border-radius:10px;color:#fff;margin-left:6px}
+.t-c{background:var(--ok)}.t-e{background:var(--wa)}.t-n{background:var(--ko)}
+.del{float:right;background:none;border:0;color:var(--ko);font-size:18px}
+.empty{color:var(--mu);text-align:center;padding:16px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header><h1>🏗️ ChantierData</h1><p>Collecte et analyse de données de chantier BTP</p></header>
+<nav>
+<button data-t="saisie" class="on">Saisie</button>
+<button data-t="releves">Relevés</button>
+<button data-t="analyse">Analyse</button>
+</nav>
+<main>
+<section id="saisie">
+<div class="card">
+<label>Chantier</label><input id="chantier" placeholder="Ex. : Immeuble R+3 Bastos">
+<div class="row"><div><label>Date</label><input id="date" type="date"></div>
+<div><label>Catégorie</label><select id="cat"><option>Terrassement</option><option>Fondations</option><option>Béton armé</option><option>Maçonnerie</option><option>Ferraillage</option><option>Second œuvre</option><option>Sécurité</option><option>Main-d’œuvre</option></select></div></div>
+<label>Désignation</label><input id="des" placeholder="Ex. : Coulage poutre P1">
+<div class="row"><div><label>Quantité</label><input id="qte" type="number" step="any" inputmode="decimal"></div>
+<div><label>Unité</label><select id="uni"><option>m³</option><option>m²</option><option>ml</option><option>kg</option><option>t</option><option>u</option><option>h</option></select></div></div>
+<div class="row"><div><label>Coût unitaire (FCFA)</label><input id="pu" type="number" step="any" inputmode="decimal"></div>
+<div><label>Statut</label><select id="st"><option value="c">Conforme</option><option value="e">À vérifier</option><option value="n">Non conforme</option></select></div></div>
+<label>Observations</label><textarea id="obs" rows="2"></textarea>
+<button class="btn" id="add">Enregistrer le relevé</button>
+</div>
+</section>
+<section id="releves" class="hide">
+<div class="card" id="liste"></div>
+<button class="btn s" id="csv">Générer l’export CSV</button>
+<textarea id="out" rows="6" class="hide" readonly></textarea>
+<button class="btn s" id="clr">Tout effacer</button>
+</section>
+<section id="analyse" class="hide"></section>
+</main>
+<script>
+var KEY="chantierdata:v1",D=[];
+function load(){try{D=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){D=[]}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function f(n){return Math.round(n).toLocaleString("fr-FR")}
+var SN={c:"Conforme",e:"À vérifier",n:"Non conforme"};
+$("date").valueAsDate=new Date();
+document.querySelectorAll("nav button").forEach(function(b){b.onclick=function(){
+document.querySelectorAll("nav button").forEach(function(x){x.classList.toggle("on",x===b)});
+["saisie","releves","analyse"].forEach(function(s){$(s).classList.toggle("hide",s!==b.dataset.t)});
+render()}});
+$("add").onclick=function(){
+var q=parseFloat($("qte").value),p=parseFloat($("pu").value);
+if(!$("chantier").value.trim()||!$("des").value.trim()||isNaN(q)||isNaN(p)){alert("Renseignez chantier, désignation, quantité et coût unitaire.");return}
+D.unshift({id:Date.now(),ch:$("chantier").value.trim(),d:$("date").value,cat:$("cat").value,des:$("des").value.trim(),q:q,u:$("uni").value,pu:p,st:$("st").value,obs:$("obs").value.trim()});
+save();["des","qte","pu","obs"].forEach(function(i){$(i).value=""});
+$("add").textContent="✓ Enregistré";setTimeout(function(){$("add").textContent="Enregistrer le relevé"},1200)};
+function group(key){var m={};D.forEach(function(r){m[r[key]]=(m[r[key]]||0)+r.q*r.pu});
+return Object.keys(m).map(function(k){return[k,m[k]]}).sort(function(a,b){return b[1]-a[1]})}
+function bars(g){var mx=g.length?g[0][1]:1;return g.map(function(x){
+return '<div class="bar"><div><span>'+esc(x[0])+'</span><b>'+f(x[1])+' F</b></div><i style="width:'+Math.max(2,x[1]/mx*100)+'%"></i></div>'}).join("")}
+function render(){
+$("liste").innerHTML=D.length?D.map(function(r){return '<div class="rec"><button class="del" data-id="'+r.id+'">×</button><h4>'+esc(r.des)+'<span class="tag t-'+r.st+'">'+SN[r.st]+'</span></h4><small>'+esc(r.ch)+' · '+esc(r.cat)+' · '+esc(r.d)+'<br>'+r.q+' '+esc(r.u)+' × '+f(r.pu)+' = <b>'+f(r.q*r.pu)+' FCFA</b>'+(r.obs?'<br>'+esc(r.obs):'')+'</small></div>'}).join(""):'<div class="empty">Aucun relevé pour le moment.</div>';
+document.querySelectorAll(".del").forEach(function(b){b.onclick=function(){D=D.filter(function(r){return String(r.id)!==b.dataset.id});save();render()}});
+var tot=D.reduce(function(s,r){return s+r.q*r.pu},0),nc=D.filter(function(r){return r.st==="n"}).length;
+var conf=D.length?Math.round(D.filter(function(r){return r.st==="c"}).length/D.length*100):0;
+$("analyse").innerHTML=D.length?'<div class="kpis"><div class="kpi"><b>'+D.length+'</b><span>Relevés</span></div><div class="kpi"><b>'+f(tot)+'</b><span>Coût total (FCFA)</span></div><div class="kpi"><b>'+conf+' %</b><span>Taux de conformité</span></div><div class="kpi"><b>'+nc+'</b><span>Non conformités</span></div></div><div class="card"><h4 style="margin:0">Coût par catégorie</h4>'+bars(group("cat"))+'</div><div class="card"><h4 style="margin:0">Coût par chantier</h4>'+bars(group("ch"))+'</div><div class="card"><h4 style="margin:0">Moyenne par relevé</h4><p style="margin:6px 0 0">'+f(tot/D.length)+' FCFA</p></div>':'<div class="card empty">Ajoutez des relevés pour voir l’analyse.</div>'}
+$("csv").onclick=function(){var h="chantier;date;categorie;designation;quantite;unite;cout_unitaire;total;statut;observations";
+$("out").value=[h].concat(D.map(function(r){return[r.ch,r.d,r.cat,r.des,r.q,r.u,r.pu,r.q*r.pu,SN[r.st],r.obs].join(";")})).join("\n");
+$("out").classList.remove("hide");$("out").select()};
+$("clr").onclick=function(){if(confirm("Effacer tous les relevés ?")){D=[];save();render()}};
+load();render();
+</script>
+</body>
+</html>
